@@ -1,318 +1,222 @@
-import 'package:flutter/cupertino.dart';
+// presentation/screens/employee_list_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_svg/svg.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:jigar_developer_flutter_assigments/common_widgets/custom_app_bar.dart';
 import 'package:jigar_developer_flutter_assigments/utils/app_color.dart';
+import 'package:jigar_developer_flutter_assigments/utils/app_images.dart';
+import 'package:jigar_developer_flutter_assigments/utils/strings.dart';
+import '../../../main.dart';
+import '../../addemployeepage/bloc/add_employee_bloc.dart';
+import '../../addemployeepage/view/add_employee_screen.dart';
+import '../../addemployeepage/view/edit_employee_screen.dart';
+import '../bloc/employee_bloc.dart';
+import '../model/employee.dart';
+import '../repository/employee_repository.dart';
 
-
-import '../bloc/employee_list_bloc.dart';
-
-class EmployeeListScreen extends StatefulWidget {
-  const EmployeeListScreen({Key? key}) : super(key: key);
-
-  @override
-  State<EmployeeListScreen> createState() => _EmployeeListScreenState();
-}
-
-class _EmployeeListScreenState extends State<EmployeeListScreen> {
-  EmployeeListBloc employeeListBloc = EmployeeListBloc();
-  List<Employee?> employeeCurrentListModel = [];
-  List<Employee?> employeePreviousListModel = [];
-
-  @override
-  void initState() {
-    super.initState();
-    initController();
-  }
-
-  void initController() {
-    employeeListBloc = BlocProvider.of<EmployeeListBloc>(context);
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      employeeListBloc.add(
-          GetEmployeeList(employeeCurrentListModel, employeePreviousListModel));
-    });
-  }
+class EmployeeListScreen extends StatelessWidget {
+  const EmployeeListScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-      appBar: StandardAppbar(
-        title: StandardCustomText(
-          label: lblEmployeeList,
-          color: whiteColor,
-          fontSize: SizeConfig.safeBlockVertical! * 1.9,
-        ),
-      ),
-      body: BlocConsumer<EmployeeListBloc, EmployeeListState>(
-        listener: (context, state) {
-          // TODO: implement listener
-          if (state is OnEmployeeListLoaded) {
-            employeeCurrentListModel.clear();
-            employeePreviousListModel.clear();
-            employeeCurrentListModel = state.employeeCurrentListModel;
-            employeePreviousListModel = state.employeePreviousListModel;
-          }
-          if (state is OnEmployeeByIdDeleted) {
-            employeeCurrentListModel.clear();
-            employeePreviousListModel.clear();
-            employeeListBloc.add(GetEmployeeList(
-                employeeCurrentListModel, employeePreviousListModel));
-          }
-        },
+      backgroundColor: AppColor.whiteColor,
+      appBar: const CustomAppBar(title: lblEmployeeList),
+      body: BlocBuilder<EmployeeBloc, EmployeeState>(
         builder: (context, state) {
-          return employeeCurrentListModel.isNotEmpty ||
-                  employeePreviousListModel.isNotEmpty
-              ? employeeListWidget()
-              : noRecordFoundWidget();
+          if (state is EmployeeLoading) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (state is EmployeeLoaded) {
+            final isEmpty = state.current.isEmpty && state.previous.isEmpty;
+
+            if (isEmpty) {
+              // No data found screen
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SvgPicture.asset(
+                        AppImages.noEmployeeImage,
+                        // make sure this image exists in assets
+                        height: 200,
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        "No employee records found",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black54,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            } else {
+              return ListView(
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Text('Current Employees',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
+                  ),
+                  ...state.current.map((e) => InkWell(
+                      onTap: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider<AddEmployeeBloc>(
+                              create: (context) => AddEmployeeBloc(
+                                  repository: employeeRepository),
+                              child: EditEmployeeScreen(employee: e),
+                            ),
+                          ),
+                        );
+
+                        if (result == true) {
+                          context.read<EmployeeBloc>().add(LoadEmployees());
+                        }
+                      },
+                      child: _buildEmployeeTile(context, e))),
+                  const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Text('Previous Employees',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
+                  ),
+                  ...state.previous.map((e) => InkWell(
+                      onTap: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider<AddEmployeeBloc>(
+                              create: (context) => AddEmployeeBloc(
+                                  repository: employeeRepository),
+                              child: EditEmployeeScreen(employee: e),
+                            ),
+                          ),
+                        );
+
+                        if (result == true) {
+                          context.read<EmployeeBloc>().add(LoadEmployees());
+                        }
+                      },
+                      child: _buildEmployeeTile(context, e))),
+                ],
+              );
+            }
+          } else {
+            return const Center(child: Text('Something went wrong.'));
+          }
         },
       ),
-
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColor.primaryColor,
-        onPressed: routeAddNewEmployee,
-        tooltip: 'Add Employee',
-        shape: const BeveledRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(5))),
-        child: const Icon(Icons.add, color: AppColor.whiteColor),
-      ), // This trailing com,
-    );
-  }
-
-  void routeAddNewEmployee() {
-    Navigator.pushNamed(context, routeAddEmployee).whenComplete(() =>
-        employeeListBloc.add(GetEmployeeList(
-            employeeCurrentListModel, employeePreviousListModel)));
-  }
-
-  Widget employeeListWidget() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        employeeCurrentListModel.isNotEmpty
-            ? Container(
-                color: bgColor,
-                width: MediaQuery.of(context).size.width,
-                child: Padding(
-                  padding:
-                      EdgeInsets.all(SizeConfig.safeBlockHorizontal! * 2.5),
-                  child: StandardCustomText(
-                    align: TextAlign.start,
-                    label: lblCurrentEmployee,
-                    color: primaryColor,
-                    fontWeight: FontWeight.w600,
-                    fontSize: SizeConfig.safeBlockVertical! * 2.5,
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (context) => AddEmployeeBloc(
+                      repository: context.read<EmployeeRepository>(),
+                    ),
                   ),
-                ),
-              )
-            : SizedBox(),
-        employeeCurrentListModel.isNotEmpty
-            ? Expanded(
-                flex: 1,
-                child: BlocProvider(
-                  create: (context) => employeeListBloc,
-                  child: currentEmployeeListView(),
-                ),
-              )
-            : SizedBox(),
-        employeePreviousListModel.isNotEmpty
-            ? Container(
-                color: bgColor,
-                width: MediaQuery.of(context).size.width,
-                child: Padding(
-                  padding:
-                      EdgeInsets.all(SizeConfig.safeBlockHorizontal! * 2.5),
-                  child: StandardCustomText(
-                    align: TextAlign.start,
-                    label: lblPreviousEmployee,
-                    color: primaryColor,
-                    fontWeight: FontWeight.w600,
-                    fontSize: SizeConfig.safeBlockVertical! * 2.5,
+                  BlocProvider.value(
+                    value: context.read<
+                        EmployeeBloc>(), // ← Pass the existing EmployeeBloc
                   ),
-                ),
-              )
-            : SizedBox(),
-        employeePreviousListModel.isNotEmpty
-            ? Expanded(
-                flex: 1,
-                child: BlocProvider(
-                  create: (context) => employeeListBloc,
-                  child: previousEmployeeListView(),
-                ),
-              )
-            : SizedBox()
-      ],
-    );
-  }
-
-  Widget noRecordFoundWidget() {
-    return Center(
-        child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: <Widget>[
-        SvgPicture.asset(
-          noRecordFound,
-          fit: BoxFit.none,
-        ),
-        StandardCustomText(
-          label: lblNoEmployeeRecord,
-          fontWeight: FontWeight.w700,
-          fontSize: SizeConfig.safeBlockVertical! * 1.9,
-        )
-      ],
-    ));
-  }
-
-  currentEmployeeListView() {
-    return ListView.separated(
-      separatorBuilder: (context, index) => const Divider(
-        color: Colors.black12,
-      ),
-      itemCount: employeeCurrentListModel.isNotEmpty
-          ? employeeCurrentListModel.length
-          : 0,
-      itemBuilder: (BuildContext context, int index) {
-        return Dismissible(
-          key: UniqueKey(),
-          direction: DismissDirection.endToStart,
-          onDismissed: (_) {
-            employeeListBloc
-                .add(DeleteEmployeeByID(employeeCurrentListModel[index]!.id!));
-          },
-
-          // This will show up when the user performs dismissal action
-          // It is a red background and a trash icon
-          background: Container(
-            color: Colors.red,
-            margin: const EdgeInsets.symmetric(horizontal: 15),
-            alignment: Alignment.centerRight,
-            child: Padding(
-              padding:
-                  EdgeInsets.only(right: SizeConfig.safeBlockHorizontal! * 3.5),
-              child: SvgPicture.asset(
-                deleteIcon,
-                fit: BoxFit.none,
+                ],
+                child: const AddEmployeeScreen(),
               ),
             ),
-          ),
-
-          // Display item's title, price...
-          child: InkWell(
-              onTap: () {
-                Navigator.pushNamed(context, routeAddEmployee,
-                        arguments: employeeCurrentListModel[index])
-                    .then((value) {
-                  setState(() {
-                    employeeListBloc.add(GetEmployeeList(
-                        employeeCurrentListModel, employeePreviousListModel));
-                  });
-                });
-                // .whenComplete(() => employeeListBloc.add(GetEmployeeList(
-                //     employeeCurrentListModel, employeePreviousListModel)));
-              },
-              child: Card(
-                margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
-                child: ListTile(
-                  title: StandardCustomText(
-                      align: TextAlign.start,
-                      label: employeeCurrentListModel[index]!.strFullName!,
-                      fontSize: SizeConfig.blockSizeVertical! * 2.3,
-                      color: blackColor),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.only(
-                            top: SizeConfig.blockSizeVertical! * 1),
-                        child: Text(
-                            employeeCurrentListModel[index]!.strEmployeeType!),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.only(
-                            top: SizeConfig.blockSizeVertical! * 1,
-                            bottom: SizeConfig.blockSizeVertical! * 1),
-                        child: Text(
-                            '${employeeCurrentListModel[index]!.strFromDate!} '
-                            // ' - ${employeeCurrentListModel[index]!.strToDate!}'
-                            ''),
-                      ),
-                    ],
-                  ),
-                ),
-              )),
-        );
-      },
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
     );
   }
 
-  previousEmployeeListView() {
-    return ListView.separated(
-      separatorBuilder: (context, index) => const Divider(
-        color: Colors.black12,
+  Widget _buildEmployeeTile(BuildContext context, Employee employee) {
+    String formattedDateRange;
+
+    if (employee.fromDate != null) {
+      final from = _formatDate(employee.fromDate!);
+      final to =
+          employee.toDate != null ? _formatDate(employee.toDate!) : 'Present';
+      formattedDateRange = "$from → $to";
+    } else {
+      formattedDateRange = 'Date not available';
+    }
+
+    return Dismissible(
+      key: Key(employee.id.toString()),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        color: Colors.red,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: const Icon(Icons.delete, color: Colors.white),
       ),
-      itemCount: employeePreviousListModel.isNotEmpty
-          ? employeePreviousListModel.length
-          : 0,
-      itemBuilder: (BuildContext context, int index) {
-        return Dismissible(
-          key: UniqueKey(),
-          direction: DismissDirection.endToStart,
-          onDismissed: (_) {
-            employeeListBloc
-                .add(DeleteEmployeeByID(employeePreviousListModel[index]!.id!));
-          },
-          background: Container(
-            color: Colors.red,
-            margin: const EdgeInsets.symmetric(horizontal: 15),
-            alignment: Alignment.centerRight,
-            child: Padding(
-              padding:
-                  EdgeInsets.only(right: SizeConfig.safeBlockHorizontal! * 3.5),
-              child: SvgPicture.asset(
-                deleteIcon,
-                fit: BoxFit.none,
+      confirmDismiss: (direction) async {
+        return await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Confirm Delete'),
+            content: Text('Delete employee "${employee.name}"?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancel'),
               ),
-            ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Delete'),
+              ),
+            ],
           ),
-          child: InkWell(
-              onTap: () {
-                Navigator.pushNamed(context, routeAddEmployee,
-                        arguments: employeePreviousListModel[index])
-                    .whenComplete(() => employeeListBloc.add(GetEmployeeList(
-                        employeeCurrentListModel, employeePreviousListModel)));
-              },
-              child: Card(
-                margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
-                child: ListTile(
-                  title: StandardCustomText(
-                      align: TextAlign.start,
-                      label: employeePreviousListModel[index]!.strFullName!,
-                      fontSize: SizeConfig.blockSizeVertical! * 2.3,
-                      color: blackColor),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.only(
-                            top: SizeConfig.blockSizeVertical! * 1),
-                        child: Text(
-                            employeePreviousListModel[index]!.strEmployeeType!),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.only(
-                            top: SizeConfig.blockSizeVertical! * 1,
-                            bottom: SizeConfig.blockSizeVertical! * 1),
-                        child: Text(
-                            '${employeePreviousListModel[index]!.strFromDate!}  - ${employeePreviousListModel[index]!.strToDate!}'),
-                      ),
-                    ],
-                  ),
-                ),
-              )),
         );
       },
+      onDismissed: (_) {
+        context.read<EmployeeBloc>().add(DeleteEmployee(employee.id));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${employee.name} deleted')),
+        );
+      },
+      child: ListTile(
+        title: Text(employee.name),
+        subtitle: Text(employee.role),
+        trailing: Text(formattedDateRange),
+      ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return "${date.day.toString().padLeft(2, '0')} "
+        "${_monthName(date.month)} "
+        "${date.year}";
+  }
+
+  String _monthName(int month) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    return months[month - 1];
   }
 }

@@ -38,6 +38,14 @@ dependencies:
   flutter_bloc: ^9.1.0
   flutter_secure_storage: ^9.2.4
   google_fonts: ^6.2.1
+  intl: ^0.20.2
+  flutter_svg: ^2.0.17
+  isar: ^3.1.0+1
+  isar_flutter_libs: ^3.1.0+1
+  build_runner: ^2.4.6
+  isar_generator: ^3.1.0
+  analyzer: ^5.13.0
+  equatable: ^2.0.7
 
 dev_dependencies:
   flutter_test:
@@ -60,6 +68,12 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+
+  assets:
+    - assets/icons/
+    - assets/images/
+
 
   # To add assets to your application, add an assets section, like this:
   # assets:

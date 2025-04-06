@@ -1,39 +1,17 @@
 import 'package:flutter/material.dart';
 
 import 'package:google_fonts/google_fonts.dart';
-import 'package:jigar_developer_flutter_assigments/utils/secure_storage.dart';
 
 import '../utils/app_color.dart';
-import '../utils/strings.dart';
 
 class Themes {
-
-  ThemeNotifier() {
-    setSavedThemeMode();
-  }
-
-
   /// set saved theme mode based on shared pref values
-  Future<void> setSavedThemeMode() async {
-    await SecureStorage.getData(spThemeMode).then((value) {
-      if (value == ThemeType.light.value) {
-        _themeMode = ThemeMode.light;
-      } else if (value == ThemeType.dark.value) {
-        _themeMode = ThemeMode.dark;
-      } else {
-        _themeMode = getSystemDefaultTheme();
-      }
-      notifyListeners();
-    });
-  }
 
   static ThemeData lightTheme = ThemeData(
     colorScheme: ColorScheme.fromSwatch().copyWith(
       primary: AppColor.primaryColor,
       brightness: Brightness.light,
     ),
-    //textTheme: GoogleFonts.outfitTextTheme(),
-    // textTheme: ThemeData(fontFamily: strOutfitFont).textTheme,
     textTheme: GoogleFonts.robotoTextTheme(),
     scaffoldBackgroundColor: AppColor.blackColor,
     textSelectionTheme: const TextSelectionThemeData(
@@ -74,7 +52,7 @@ class Themes {
         const ProgressIndicatorThemeData(color: AppColor.textColor),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        side: BorderSide(color: AppColor.primaryColor),
+        side: const BorderSide(color: AppColor.primaryColor),
       ),
     ),
   );
